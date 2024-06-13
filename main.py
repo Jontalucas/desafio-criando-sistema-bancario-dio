@@ -39,7 +39,7 @@ class Historico:
     @property
     def transacoes(self):
         return self._transacoes
-    def adicionarTransacao(self, transacao = Transacao):
+    def adicionarTransacao(self, transacao: Transacao):
         registro = f"{str(transacao.__class__.__name__)}: R$  {transacao.valor:.2f}"
         self.transacoes.append(registro)
         
@@ -106,7 +106,7 @@ class Deposito(Transacao):
     @property
     def valor(self):
         return float(self._valor)
-    def registrar(self, conta = Conta):
+    def registrar(self, conta: Conta):
         transacaoSucedida = conta.depositar(self.valor)
         if transacaoSucedida:
             conta.historico.adicionarTransacao(self)
@@ -117,7 +117,7 @@ class Saque(Transacao):
     @property
     def valor(self):
         return float(self._valor)
-    def registrar(self, conta = Conta):
+    def registrar(self, conta: Conta):
         transacaoSucedida = conta.sacar(self.valor)
         if transacaoSucedida:
             conta.historico.adicionarTransacao(self)
