@@ -1,138 +1,221 @@
+from abc import ABC, abstractmethod
+
+class Transacao(ABC):
+    @property 
+    @abstractmethod
+    def valor(self):
+        pass
+    @abstractmethod
+    def registrar(conta):
+        pass
+
 class Cliente:
+    def __init__(self, logradouro, numero, bairo, cidade, uf):
+        self._endereco = logradouro +' - '+ numero +' - '+ bairo +' - '+ cidade +'/'+ uf
+        self._contas = []
+    @property
+    def nome(self):
+        return self._nome
+    @property
+    def contas(self):
+        return self._contas
+    def realizarTransacao(self, conta, transacao):
+        transacao.registrar(conta)
+    def adicionarConta(self, conta):
+        self._contas.append(conta)
+        
+class PessoaFisica(Cliente):
     def __init__(self, nome, cpf, dataNascimento, logradouro, numero, bairo, cidade, uf):
-        self.nome = nome
-        self.cpf = cpf
-        self.dataNascimento = dataNascimento
-        self.endereco = logradouro + ' - ' + numero + ' - ' + bairo + ' - ' + cidade + '/' + uf
-    def mostrarCliente(self):
-        print(f'Nome: {self.nome}')
-        print(f'CPF: {self.cpf}')
-        print(f'Data de Nascimento: {self.dataNascimento}')
-        print(f'Endereço: {self.endereco}')
+        super().__init__(logradouro, numero, bairo, cidade, uf)
+        self._nome = nome
+        self._cpf = cpf
+        self._dataNascimento = dataNascimento      
+    def __str__(self):
+        return f"Nome: {self._nome}\nCPF: {self._cpf}\nData de Nascimento: {self._dataNascimento}\nEndereço: {self._endereco}"
+
+class Historico:
+    def __init__(self):
+        self._transacoes = []
+    @property
+    def transacoes(self):
+        return self._transacoes
+    def adicionarTransacao(self, transacao = Transacao):
+        registro = f"{str(transacao.__class__.__name__)}: R$  {transacao.valor:.2f}"
+        self.transacoes.append(registro)
+        
 class Conta:
-    def __init__(self, numero, cliente = Cliente):
-        self.numero = numero
-        self.saldo = float(0)
-        self.limiteSaque = 3
-        self.historico = []
-        self.cliente = cliente
-    def saque (self, valor):
-        if self.saldo >= valor and self.limiteSaque > 0 and valor <= 500:
-            self.saldo -= valor
-            self.limiteSaque -= 1
-            self.historico.append(-valor)
-        elif valor > 500:
+    def __init__(self, numero, cliente):
+        self._numero = numero
+        self._agencia = "001"
+        self._saldo = 0
+        self._historico = Historico()
+        self._cliente = cliente
+    @property
+    def numero(self):
+        return self._numero
+    @property
+    def agencia(self):
+        return self._agencia
+    @property
+    def saldo(self):
+        return self._saldo
+    @property
+    def historico(self):
+        return self._historico
+    @property
+    def cliente(self):
+        return self._cliente    
+    @classmethod
+    def novaConta(cls, num, cliente):
+        return cls(num, cliente)
+    def sacar(self, valor):
+        if valor <= self._saldo:
+            self._saldo -= valor
+            return True
+        else:
+            return False
+    def depositar(self, valor):
+        self._saldo += valor
+        return True
+    def verExtrato(self):
+        for transacao in self.historico.transacoes:
+            print(transacao)
+        print(f"Saldo: R$ {float(self.saldo):.2f}")
+    def __str__(self):
+        return f"Numero: {self.numero}\nSaldo: R$ {float(self.saldo):.2f}\nAgencia: {self.agencia}\nCliente: {self.cliente.nome}"
+class ContaCorrente(Conta):
+    def __init__(self, numero, cliente,  limite=500, limiteSaques=3):
+        super().__init__(numero, cliente)
+        self._limite = limite
+        self._limiteSaques = limiteSaques
+    def sacar(self, valor):
+        if self.saldo >= valor and self._limiteSaques > 0 and valor <= self._limite:
+            self._saldo -= valor
+            self._limiteSaques -= 1
+            return True
+        elif valor > self._limite:
             print ("Valor excedeu o limite de saque!")
-        elif self.limiteSaque == 0:
+        elif self._limiteSaques == 0:
             print ("Limite de saques diário excedidos")
         else:
             print ("Saldo insuficiente")
-    def deposito (self, valor):
-        self.saldo += valor 
-        self.historico.append(valor)
-    def extrato (self):
-        for valor in self.historico:
-            if valor > 0:
-                print(f'Depósito: R$ {float(valor):.2f}')
-            else: 
-                print(f'Saque: R$ {float(valor):.2f}')
-        print(f'Saldo: R$ {float(self.saldo):.2f}' )
-    def mostrarConta(self):
-        print("Numero: " + str(self.numero))
-        print(f"Saldo: R$ {float(self.saldo):.2f}")
-        print("Cliente: " + self.cliente.nome)
+            
+class Deposito(Transacao):
+    def __init__(self, valor):
+        self._valor = valor
+    @property
+    def valor(self):
+        return float(self._valor)
+    def registrar(self, conta = Conta):
+        transacaoSucedida = conta.depositar(self.valor)
+        if transacaoSucedida:
+            conta.historico.adicionarTransacao(self)
+            
+class Saque(Transacao):
+    def __init__(self, valor):
+        self._valor = valor
+    @property
+    def valor(self):
+        return float(self._valor)
+    def registrar(self, conta = Conta):
+        transacaoSucedida = conta.sacar(self.valor)
+        if transacaoSucedida:
+            conta.historico.adicionarTransacao(self)
 
-def cadastrarCliente():
-    nome = input("Digite o nome do cliente: ")
-    cpf = input("Digite o CPF do cliente: ")
-    for cliente in clientes:
-        if cliente.cpf == cpf:
-            print("CPF já cadastrado")
-            return
-    dataNascimento = input("Digite a data de nascimento do cliente: ")
-    logradouro = input("Digite o logradouro do cliente: ")
-    numero = input("Digite o número do cliente: ")
-    bairo = input("Digite o bairro do cliente: ")
-    cidade = input("Digite a cidade do cliente: ")
-    uf = input("Digite a UF do cliente: ")
-    cliente = Cliente(nome, cpf, dataNascimento, logradouro, numero, bairo, cidade, uf)
-    clientes.append(cliente)
-def criarConta():
-    aux = False
-    numero = input("Numero da Conta: ")
-    for conta in contas:
-        if conta.numero == numero:
-            print("Numero de conta já existe")
-            return
-    nome = input("Dono da Conta: ")
-    for cliente in clientes:
-        if cliente.nome == nome:
-            conta = Conta(numero, cliente)
-            contas.append(conta)
-            print("Conta criada com sucesso")
-            aux = True
-            return
-    if aux == False:
-        print("Cliente não encontrado")
-        return
-    
-operacoes = """
+clientes = []
+
+opcoes = """
+    1 - Cadastrar Cliente
+    2 - Listar clientes
+    3 - Fazer operacoes como cliente
+    4 - Sair
+"""
+operacoesCliente = """
+    1 - Criar conta
+    2 - Listar Contas
+    3 - Fazer operacoes em uma conta
+    4 - Voltar
+"""
+operacoesConta = """
     1 - Ver Extrato
     2 - Saque
     3 - Depósito
     4 - Voltar
 """
-opcoes = """
-    1 - Cadastrar Cliente
-    2 - Criar Conta
-    3 - Listar clientes
-    4 - Listar contas
-    5 - Fazer operacoes em uma conta
-    6 - Sair
-"""
-contas = []
-clientes = []
-print ("Cadastre um cliente")
-cadastrarCliente()
-print ("Crie uma conta")
-criarConta()
+
 while True:
     escolhaOpcoes = input(opcoes)
     if escolhaOpcoes == "1":
-        cadastrarCliente()
+        nome = input("Digite o nome: ")
+        cpf = input("Digite o cpf: ")
+        dataNascimento = input("Digite a data de nascimento: ")
+        logradouro = input("Digite o logradouro: ")
+        numero = input("Digite o numero: ")
+        bairo = input("Digite o bairro: ")
+        cidade = input("Digite a cidade: ")
+        uf = input("Digite a uf: ")
+        cliente = PessoaFisica(nome, cpf, dataNascimento, logradouro, numero, bairo, cidade, uf)
+        clientes.append(cliente)
     elif escolhaOpcoes == "2":
-        criarConta()
-    elif escolhaOpcoes == "3":
         for cliente in clientes:
-            cliente.mostrarCliente()
-    elif escolhaOpcoes == "4":
-        for conta in contas:
-            conta.mostrarConta()
-    elif escolhaOpcoes == "5":
-        conta = None
-        num = input("Digite o numero da conta")
-        for c in contas:
-            if c.numero == num:
-                conta = c
-        if conta == None:
-            print("Conta não encontrada")
-        else:
-            while True:    
-                escolhaOperacoes = input(operacoes)
-                if escolhaOperacoes == '1':
-                    conta.extrato()
-                elif escolhaOperacoes == '2':
-                    valor = float(input("Digite o valor do saque: "))
-                    conta.saque(valor)
-                elif escolhaOperacoes == '3':
-                    valor = float(input("Digite o valor do depósito: "))
-                    conta.deposito(valor)
-                elif escolhaOperacoes == '4':
-                    break
+            print (cliente)
+    elif escolhaOpcoes == "3":
+        while True:
+            cliente = None
+            escolhaCliente = input("Digite S para voltar\nDigite o nome do cliente: ")
+            if escolhaCliente.lower() == 's':
+                break
+            else: 
+                for c in clientes:
+                    if c.nome == escolhaCliente:
+                        cliente = c
+                if cliente == None:
+                    print("Cliente não existe")
                 else:
-                    print("Opção inválida")
-    elif escolhaOpcoes == "6":
+                    while True:
+                        escolhaOperacoesCliente = input(operacoesCliente)
+                        if escolhaOperacoesCliente == "1":
+                            jaExiste = False
+                            numero = input("Numero da Conta: ")
+                            for c in clientes:
+                                for conta in c.contas:
+                                    if conta.numero == numero:
+                                        jaExiste = True
+                            if jaExiste == False:
+                                cliente.adicionarConta(ContaCorrente.novaConta(numero, cliente))
+                            else:
+                                print("Conta já existe")
+                        elif escolhaOperacoesCliente == "2":
+                            for conta in cliente.contas:
+                                print(conta)
+                        elif escolhaOperacoesCliente == "3":
+                            while True:
+                                conta = None
+                                escolhaConta = input("Digite S para voltar\nDigite o numero da conta: ")
+                                if escolhaConta.lower() == 's':
+                                    break
+                                else:
+                                    for c in cliente.contas:
+                                        if c.numero == escolhaConta:
+                                            conta = c
+                                    if conta == None:
+                                        print("Conta não existe")
+                                    else:
+                                        while True:
+                                            escolhaOperacoesConta = input(operacoesConta)
+                                            if escolhaOperacoesConta == "1":
+                                                    conta.verExtrato()
+                                            elif escolhaOperacoesConta == "2":
+                                                valor = float(input("Digite o valor: "))
+                                                Saque(valor).registrar(conta)
+                                            elif escolhaOperacoesConta == "3":                                       
+                                                valor = float(input("Digite o valor: "))
+                                                Deposito(valor).registrar(conta)
+                                            elif escolhaOperacoesConta == "4":
+                                                break
+                        elif escolhaOperacoesCliente == "4":
+                            break
+    elif escolhaOpcoes == "4":
         break
-    else:
+    else: 
         print("Opção inválida")
-
